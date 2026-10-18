@@ -13,6 +13,7 @@
 <p align="center">
   <a href="https://github.com/zpeters/zotero-random-read/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/zpeters/zotero-random-read?color=be2a4a"></a>
   <img alt="Zotero 7+" src="https://img.shields.io/badge/Zotero-7%2B-be2a4a">
+  <a href="https://github.com/zpeters/zotero-random-read/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/zpeters/zotero-random-read/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/zpeters/zotero-random-read?color=555"></a>
 </p>
 
@@ -68,8 +69,13 @@ direnv allow
 just check     # syntax-check the JS, validate the manifest
 just build     # dist/random-read.xpi and dist/update.json
 just site      # preview the website at http://localhost:8000
-just release   # tag v<version> and publish a GitHub release
+just release   # tag main as v<version>; CI builds and publishes the release
 ```
+
+To publish a release: bump `version` in `src/manifest.json`, push `main`, then
+run `just release`. GitHub Actions builds `random-read.xpi` and `update.json`
+and attaches them to the release. Every push to `main` also builds the `.xpi`
+as a workflow artifact.
 
 ## License
 

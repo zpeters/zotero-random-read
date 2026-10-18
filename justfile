@@ -20,10 +20,12 @@ check:
 site:
     cd docs && python3 -m http.server 8000
 
-# Tag v<version> from src/manifest.json and publish a GitHub release.
-release: check build
+# Tag main as v<version> (from src/manifest.json) and push the tag.
+# CI then builds the .xpi and publishes the GitHub release.
+release: check
     #!/usr/bin/env bash
     set -euo pipefail
     v=$(node -p 'require("./src/manifest.json").version')
-    gh release create "v$v" dist/random-read.xpi dist/update.json \
-        --repo zpeters/zotero-random-read --title "v$v" --generate-notes
+    jj tag set "v$v" -r main
+    jj git push --remote origin --tag "v$v"
+    jj git push --remote github --tag "v$v"
