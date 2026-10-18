@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Random Read for Zotero</title>
+<meta name="description" content="A Zotero plugin that picks one unread item, files it in ~In Progress~ and marks it To Read.">
+<meta property="og:title" content="Random Read for Zotero">
+<meta property="og:description" content="Let chance pick your next paper.">
+<link rel="icon" href="dice.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/geist-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face {
+	font-family: "Geist";
+	src: url("fonts/geist-latin-wght-normal.woff2") format("woff2");
+	font-weight: 100 900;
+	font-display: swap;
+}
+@font-face {
+	font-family: "Geist Mono";
+	src: url("fonts/geist-mono-latin-wght-normal.woff2") format("woff2");
+	font-weight: 100 900;
+	font-display: swap;
+}
+
+/* One accent (deep rose), zinc neutrals, one radius (12px). */
+:root {
+	--bg: #fafafa;
+	--surface: #f1f1f3;
+	--text: #18181b;
+	--muted: #52525b;
+	--line: #e4e4e7;
+	--accent: #be2a4a;
+	--accent-text: #fafafa;
+	--die: #fdfdfd;
+	--die-shadow: rgb(190 42 74 / 0.18);
+	--radius: 12px;
+	color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #0f0f11;
+		--surface: #1a1a1e;
+		--text: #f4f4f5;
+		--muted: #a1a1aa;
+		--line: #27272a;
+		--accent: #f2708a;
+		--accent-text: #18181b;
+		--die: #1f1f24;
+		--die-shadow: rgb(242 112 138 / 0.16);
+	}
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font: 400 1rem/1.6 "Geist", system-ui, sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+code, kbd {
+	font-family: "Geist Mono", ui-monospace, monospace;
+	font-size: 0.9em;
+	background: var(--surface);
+	border-radius: 6px;
+	padding: 0.1em 0.4em;
+	white-space: nowrap;
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+/* Nav */
+nav { height: 68px; display: flex; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; text-decoration: none; }
+.brand img { width: 22px; height: 22px; }
+nav a.gh { color: var(--muted); text-decoration: none; font-size: 0.95rem; }
+nav a.gh:hover { color: var(--text); }
+
+/* Hero */
+.hero {
+	display: grid;
+	grid-template-columns: 1.2fr 1fr;
+	align-items: center;
+	gap: 48px;
+	min-height: min(calc(100dvh - 68px), 760px);
+	padding: 48px 0 72px;
+}
+h1 {
+	font-size: clamp(2.5rem, 5.5vw, 4.25rem);
+	line-height: 1.02;
+	letter-spacing: -0.035em;
+	font-weight: 650;
+	margin: 0 0 20px;
+}
+.lede { font-size: 1.2rem; color: var(--muted); max-width: 34ch; margin: 0 0 32px; }
+.ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn {
+	display: inline-flex; align-items: center; gap: 8px;
+	height: 48px; padding: 0 22px;
+	border-radius: var(--radius);
+	font-weight: 600; text-decoration: none; white-space: nowrap;
+	transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s;
+}
+.btn:active { transform: translateY(1px) scale(0.98); }
+.btn.primary { background: var(--accent); color: var(--accent-text); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.secondary { border: 1px solid var(--line); }
+.btn.secondary:hover { background: var(--surface); }
+
+/* The die: click to roll. */
+.stage { display: grid; place-items: center; }
+.die {
+	--size: min(300px, 62vw);
+	width: var(--size); height: var(--size);
+	padding: calc(var(--size) * 0.16);
+	display: grid;
+	grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+	place-items: center;
+	background: var(--die);
+	border: 1px solid var(--line);
+	border-radius: calc(var(--size) * 0.18);
+	box-shadow: 0 30px 70px -20px var(--die-shadow), inset 0 1px 0 rgb(255 255 255 / 0.06);
+	cursor: pointer;
+	transform: rotate(-8deg);
+	transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.die:hover { transform: rotate(-4deg) translateY(-4px); }
+.die:focus-visible { outline: 3px solid var(--accent); outline-offset: 6px; }
+.pip {
+	width: 64%; aspect-ratio: 1; border-radius: 50%;
+	background: var(--accent);
+	opacity: 0; transform: scale(0.4);
+	transition: opacity 0.15s, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pip.on { opacity: 1; transform: scale(1); }
+.die.rolling { animation: roll 0.55s cubic-bezier(0.3, 0.7, 0.2, 1); }
+@keyframes roll {
+	0% { transform: rotate(-8deg); }
+	45% { transform: rotate(200deg) scale(0.9); }
+	100% { transform: rotate(352deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.die, .pip, .btn { transition: none; }
+	.die.rolling { animation: none; }
+}
+
+/* Steps: big verb, short sentence. */
+section { padding: 96px 0; }
+h2 { font-size: clamp(1.75rem, 3vw, 2.4rem); letter-spacing: -0.025em; line-height: 1.1; margin: 0 0 40px; font-weight: 650; }
+.steps { display: grid; gap: 36px; max-width: 860px; }
+.step { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: baseline; }
+.step .verb { font-size: clamp(2.25rem, 4.5vw, 3.5rem); font-weight: 700; letter-spacing: -0.04em; color: var(--accent); line-height: 1; }
+.step p { margin: 0; font-size: 1.15rem; color: var(--muted); max-width: 46ch; }
+.step p strong { color: var(--text); font-weight: 600; }
+
+/* Install: steps on the left, requirements on a tinted panel. */
+.install { display: grid; grid-template-columns: 1.3fr 1fr; gap: 48px; align-items: start; }
+.install ol { margin: 0; padding-left: 1.3em; display: grid; gap: 14px; font-size: 1.1rem; }
+.install ol li::marker { color: var(--accent); font-weight: 700; }
+.panel { background: var(--surface); border-radius: var(--radius); padding: 28px 30px; }
+.panel h3 { margin: 0 0 12px; font-size: 1.05rem; }
+.panel ul { margin: 0; padding-left: 1.1em; display: grid; gap: 10px; color: var(--muted); }
+.panel ul strong { color: var(--text); font-weight: 600; }
+
+/* Pool rules */
+.pool { max-width: 680px; }
+.pool p { font-size: 1.15rem; color: var(--muted); margin: 0 0 20px; }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip { font-family: "Geist Mono", ui-monospace, monospace; font-size: 0.9rem; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--radius); text-decoration: line-through; text-decoration-color: var(--accent); color: var(--muted); }
+
+footer { padding: 40px 0 56px; color: var(--muted); font-size: 0.9rem; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--line); }
+
+@media (max-width: 767px) {
+	.wrap { padding: 0 16px; }
+	.hero { grid-template-columns: 1fr; min-height: 0; gap: 40px; padding: 24px 0 64px; }
+	.stage { order: -1; }
+	.die { --size: min(200px, 52vw); }
+	section { padding: 64px 0; }
+	.step { grid-template-columns: 1fr; gap: 6px; }
+	.install { grid-template-columns: 1fr; gap: 32px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+	<nav>
+		<a class="brand" href="./"><img src="dice.svg" alt="">Random Read</a>
+		<a class="gh" href="https://github.com/zpeters/zotero-random-read">GitHub</a>
+	</nav>
+
+	<header class="hero">
+		<div>
+			<h1>Let chance pick your next paper.</h1>
+			<p class="lede">A Zotero plugin that picks one unread item, files it in <code>~In&nbsp;Progress~</code> and marks it To&nbsp;Read.</p>
+			<div class="ctas">
+				<a class="btn primary" href="https://github.com/zpeters/zotero-random-read/releases/latest">Download</a>
+				<a class="btn secondary" href="https://github.com/zpeters/zotero-random-read">View source</a>
+			</div>
+		</div>
+		<div class="stage">
+			<button class="die" id="die" type="button" aria-label="Roll the die">
+				<span class="pip"></span><span class="pip"></span><span class="pip"></span>
+				<span class="pip"></span><span class="pip"></span><span class="pip"></span>
+				<span class="pip"></span><span class="pip"></span><span class="pip"></span>
+			</button>
+		</div>
+	</header>
+</div>
+
+<section>
+	<div class="wrap">
+		<h2>One click does three things.</h2>
+		<div class="steps">
+			<div class="step">
+				<span class="verb">Pick</span>
+				<p>One <strong>random item</strong> from My Library that you have not started yet.</p>
+			</div>
+			<div class="step">
+				<span class="verb">File</span>
+				<p>Adds it to your <strong><code>~In Progress~</code></strong> collection and selects it there.</p>
+			</div>
+			<div class="step">
+				<span class="verb">Mark</span>
+				<p>Sets its read status to <strong>To Read</strong>, in the format the Reading List plugin uses.</p>
+			</div>
+		</div>
+	</div>
+</section>
+
+<!-- TODO: screenshot of the dice button in the Zotero items toolbar, about 1600x1000, saved as docs/screenshot.png -->
+
+<section>
+	<div class="wrap install">
+		<div>
+			<h2>Install it in a minute.</h2>
+			<ol>
+				<li>Download <code>random-read.xpi</code> from the latest release.</li>
+				<li>In Zotero, open <strong>Tools → Plugins</strong>.</li>
+				<li>Click the gear, choose <strong>Install Plugin From File</strong>, and select the file.</li>
+				<li>Click the dice in the items toolbar, or use <strong>Tools → Pick a Random Item to Read</strong>.</li>
+			</ol>
+		</div>
+		<div class="panel">
+			<h3>What it needs</h3>
+			<ul>
+				<li><strong>Zotero 7</strong> or later.</li>
+				<li>A collection named exactly <code>~In Progress~</code>.</li>
+				<li>Optional: <a href="https://github.com/Dominic-DallOsto/zotero-reading-list">Zotero Reading List</a>, to see the status in its column.</li>
+			</ul>
+		</div>
+	</div>
+</section>
+
+<section>
+	<div class="wrap pool">
+		<h2>It skips what you already handled.</h2>
+		<p>Notes, attachments, items in the trash and items already in <code>~In Progress~</code> are never picked. Neither are items with one of these statuses:</p>
+		<div class="chips">
+			<span class="chip">To Read</span>
+			<span class="chip">In Progress</span>
+			<span class="chip">Read</span>
+			<span class="chip">Not Reading</span>
+		</div>
+	</div>
+</section>
+
+<div class="wrap">
+	<footer>
+		<span>MIT license. Not affiliated with Zotero.</span>
+		<a href="https://github.com/zpeters/zotero-random-read">github.com/zpeters/zotero-random-read</a>
+	</footer>
+</div>
+
+<script>
+// Pip positions (0-8, row by row) for each face.
+const FACES = [[4], [2, 6], [2, 4, 6], [0, 2, 6, 8], [0, 2, 4, 6, 8], [0, 2, 3, 5, 6, 8]];
+const die = document.getElementById("die");
+const pips = die.querySelectorAll(".pip");
+let face = 4;
+
+function show(n) {
+	pips.forEach((p, i) => p.classList.toggle("on", FACES[n].includes(i)));
+	die.setAttribute("aria-label", `Roll the die (showing ${n + 1})`);
+}
+
+die.addEventListener("click", () => {
+	let next;
+	do { next = Math.floor(Math.random() * 6); } while (next === face);
+	face = next;
+	die.classList.remove("rolling");
+	void die.offsetWidth; // restart the animation
+	die.classList.add("rolling");
+	setTimeout(() => show(face), matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 260);
+});
+
+show(face);
+</script>
+</body>
+</html>

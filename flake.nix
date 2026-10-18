@@ -16,6 +16,7 @@
             pkgs.just
             pkgs.zip
             pkgs.nodejs
+            pkgs.gh
           ];
         };
       }

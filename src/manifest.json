@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "Pick a random unread item, add it to ~In Progress~ and mark it To Read",
   "author": "Zach Peters",
+  "homepage_url": "https://zpeters.github.io/zotero-random-read/",
   "icons": {
     "48": "content/icons/dice.svg",
     "96": "content/icons/dice.svg"
@@ -11,7 +12,7 @@
   "applications": {
     "zotero": {
       "id": "random-read@zpeters",
-      "update_url": "https://example.invalid/random-read/update.json",
+      "update_url": "https://github.com/zpeters/zotero-random-read/releases/latest/download/update.json",
       "strict_min_version": "7.0",
       "strict_max_version": "10.*"
     }
