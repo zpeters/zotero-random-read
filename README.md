@@ -74,7 +74,8 @@ just release   # tag main as v<version>; CI builds and publishes the release
 
 To publish a release: bump `version` in `src/manifest.json`, push `main`, then
 run `just release`. GitHub Actions builds `random-read.xpi` and `update.json`
-and attaches them to the release. Every push to `main` also builds the `.xpi`
+and attaches them to the release. A release made on the GitHub website also
+works: CI attaches the files to it when its tag is pushed. Every push to `main` also builds the `.xpi`
 as a workflow artifact.
 
 ## License

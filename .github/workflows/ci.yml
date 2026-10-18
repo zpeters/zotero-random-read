@@ -6,15 +6,25 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build and attach assets to (for example v0.1.0). Leave empty to only build."
+        required: false
 
 permissions:
   contents: write
+
+env:
+  # Set when this run publishes a release: a pushed v* tag, or a manual run with a tag.
+  RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.tag }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: cachix/install-nix-action@v31
         with:
@@ -31,18 +41,25 @@ jobs:
             dist/update.json
 
       - name: Check tag matches manifest version
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: env.RELEASE_TAG != ''
         run: |
           version=$(jq -r .version src/manifest.json)
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match manifest version $version" >&2
+          if [ "v$version" != "$RELEASE_TAG" ]; then
+            echo "Tag $RELEASE_TAG does not match manifest version $version" >&2
             exit 1
           fi
 
+      # A release made in the GitHub UI already exists when its tag push
+      # triggers this run, so attach the assets to it instead of failing.
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: env.RELEASE_TAG != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/random-read.xpi dist/update.json \
-            --title "$GITHUB_REF_NAME" --generate-notes
+          assets=(dist/random-read.xpi dist/update.json)
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG" "${assets[@]}" \
+              --title "$RELEASE_TAG" --generate-notes
+          fi
