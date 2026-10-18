@@ -19,13 +19,3 @@ check:
 # Serve the GitHub Pages site on http://localhost:8000.
 site:
     cd docs && python3 -m http.server 8000
-
-# Tag main as v<version> (from src/manifest.json) and push the tag.
-# CI then builds the .xpi and publishes the GitHub release.
-release: check
-    #!/usr/bin/env bash
-    set -euo pipefail
-    v=$(node -p 'require("./src/manifest.json").version')
-    jj tag set "v$v" -r main
-    jj git push --remote origin --tag "v$v"
-    jj git push --remote github --tag "v$v"

@@ -69,14 +69,18 @@ direnv allow
 just check     # syntax-check the JS, validate the manifest
 just build     # dist/random-read.xpi and dist/update.json
 just site      # preview the website at http://localhost:8000
-just release   # tag main as v<version>; CI builds and publishes the release
 ```
 
-To publish a release: bump `version` in `src/manifest.json`, push `main`, then
-run `just release`. GitHub Actions builds `random-read.xpi` and `update.json`
-and attaches them to the release. A release made on the GitHub website also
-works: CI attaches the files to it when its tag is pushed. Every push to `main` also builds the `.xpi`
-as a workflow artifact.
+## Release
+
+1. Bump `version` in `src/manifest.json` and push `main`.
+2. On GitHub, open **Releases → Draft a new release**, create the tag
+   `v<version>` (it must match the manifest), and click **Publish release**.
+
+GitHub Actions then builds `random-read.xpi` and `update.json` and attaches
+them to that release. Every push to `main` also builds the `.xpi` as a
+workflow artifact. To rebuild the files for an existing release, run the CI
+workflow by hand (**Actions → CI → Run workflow**) and enter its tag.
 
 ## License
 
