@@ -1,0 +1,19 @@
+{
+  "manifest_version": 2,
+  "name": "Random Read",
+  "version": "0.1.0",
+  "description": "Pick a random unread item, add it to ~In Progress~ and mark it To Read",
+  "author": "Zach Peters",
+  "icons": {
+    "48": "content/icons/dice.svg",
+    "96": "content/icons/dice.svg"
+  },
+  "applications": {
+    "zotero": {
+      "id": "random-read@zpeters",
+      "update_url": "https://example.invalid/random-read/update.json",
+      "strict_min_version": "7.0",
+      "strict_max_version": "10.*"
+    }
+  }
+}
